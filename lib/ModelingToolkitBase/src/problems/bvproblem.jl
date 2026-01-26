@@ -22,8 +22,10 @@
         checkbounds, time_dependent_init = false, expression, kwargs...
     )
 
-    fcost = generate_bvp_cost(sys; expression = Val{false}, wrap_gfw = Val{false},
-        eval_expression, eval_module, cse, checkbounds)
+    fcost = generate_bvp_cost(
+        sys; expression = Val{false}, wrap_gfw = Val{false},
+        eval_expression, eval_module, cse, checkbounds
+    )
 
     stidxmap = Dict([v => i for (i, v) in enumerate(dvs)])
     u0_idxs = has_alg_eqs(sys) ? collect(1:length(dvs)) :
