@@ -1789,7 +1789,7 @@ end
 
 Macro for writing problem/function constructors. Expects a function definition with type
 parameters for `iip` and `specialize`. Generates fallbacks with
-`specialize = SciMLBase.FullSpecialize` and `iip = true`.
+`specialize = SciMLBase.AutoSpecialize` and `iip = true`.
 """
 # Unwrap `@nospecialize(arg)` to get the underlying argument expression.
 # Returns the argument unchanged if not wrapped in @nospecialize.
@@ -1859,9 +1859,9 @@ macro fallback_iip_specialize(ex)
     fnname_name, curly_args... = fnname_curly.args
     @assert curly_args == where_args
 
-    # callexpr_iip is `ODEProblem{iip, FullSpecialize}(call_args...)`
+    # callexpr_iip is `ODEProblem{iip, AutoSpecialize}(call_args...)`
     callexpr_iip = Expr(
-        :call, Expr(:curly, fnname_name, curly_args[1], SciMLBase.FullSpecialize), call_args...
+        :call, Expr(:curly, fnname_name, curly_args[1], SciMLBase.AutoSpecialize), call_args...
     )
     # `ODEProblem{iip}`
     fnname_iip = Expr(:curly, fnname_name, curly_args[1])
