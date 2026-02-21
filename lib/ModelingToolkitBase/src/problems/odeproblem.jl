@@ -91,7 +91,39 @@ Base.@nospecializeinfer @fallback_iip_specialize function SciMLBase.ODEFunction{
         nlstep_data = ode_nlstep,
     )
 
-    maybe_codegen_scimlfn(expression, ODEFunction{iip, spec}, args; kwargs...)
+    odefn = maybe_codegen_scimlfn(expression, ODEFunction{iip, spec}, args; kwargs...)
+    # Erase the OverrideInitData and ODENLStepData types so that all
+    # AutoSpecialize ODEFunctions share the same type regardless of
+    # model-specific init functions.
+    if expression != Val{true} && spec === SciMLBase.AutoSpecialize
+        odefn = _erase_init_data_type(odefn)
+    end
+    return odefn
+end
+
+"""
+Reconstruct the ODEFunction with abstract union types for the `initialization_data` and
+`nlstep_data` type parameters. This ensures all AutoSpecialize ODEFunctions have identical
+types, preventing recompilation of `promote_f` and solver code for each model.
+"""
+function _erase_init_data_type(f::SciMLBase.ODEFunction)
+    return SciMLBase.ODEFunction{
+        SciMLBase.isinplace(f), SciMLBase.specialization(f),
+        typeof(f.f), typeof(f.mass_matrix),
+        typeof(f.analytic), typeof(f.tgrad),
+        typeof(f.jac), typeof(f.jvp), typeof(f.vjp), typeof(f.jac_prototype),
+        typeof(f.sparsity), typeof(f.Wfact), typeof(f.Wfact_t), typeof(f.W_prototype),
+        typeof(f.paramjac),
+        typeof(f.observed), typeof(f.colorvec),
+        typeof(f.sys),
+        Union{Nothing, SciMLBase.OverrideInitData},
+        Union{Nothing, SciMLBase.ODENLStepData},
+    }(
+        f.f, f.mass_matrix, f.analytic, f.tgrad, f.jac,
+        f.jvp, f.vjp, f.jac_prototype, f.sparsity, f.Wfact,
+        f.Wfact_t, f.W_prototype, f.paramjac,
+        f.observed, f.colorvec, f.sys, f.initialization_data, f.nlstep_data
+    )
 end
 
 Base.@nospecializeinfer @fallback_iip_specialize function SciMLBase.ODEProblem{iip, spec}(
