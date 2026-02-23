@@ -902,19 +902,20 @@ function generate_control_function(
         end
     end
 
-    if dist_ap_name === nothing
-        return ModelingToolkitBase.generate_control_function(
-            system_modifier(sys), u;
-            known_disturbance_inputs = known_dist_vars, kwargs...)
+    # Open loops for unknown disturbance APs (positional dist_ap_name)
+    d = nothing
+    if dist_ap_name !== nothing
+        dist_ap_name = canonicalize_ap(sys, dist_ap_name)
+        d = []
+        for dist_ap in dist_ap_name
+            sys, (du, _) = open_loop(sys, dist_ap)
+            push!(d, du)
+        end
     end
 
-    dist_ap_name = canonicalize_ap(sys, dist_ap_name)
-    d = []
-    for dist_ap in dist_ap_name
-        sys, (du, _) = open_loop(sys, dist_ap)
-        push!(d, du)
-    end
-
+    # Always pass disturbance_inputs explicitly to prevent the base function
+    # from defaulting to disturbances(sys), which would overlap with variables
+    # we already opened and get substituted to zero.
     return ModelingToolkitBase.generate_control_function(
         system_modifier(sys), u, d;
         known_disturbance_inputs = known_dist_vars, kwargs...)
