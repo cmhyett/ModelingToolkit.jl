@@ -92,6 +92,9 @@ Base.@nospecializeinfer @fallback_iip_specialize function SciMLBase.ODEFunction{
     )
 
     odefn = maybe_codegen_scimlfn(expression, ODEFunction{iip, spec}, args; kwargs...)
+    if expression != Val{true} && spec === SciMLBase.AutoSpecialize
+        odefn = SciMLBase.widen_bounded_type_params(odefn)
+    end
     return odefn
 end
 
