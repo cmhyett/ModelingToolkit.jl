@@ -254,6 +254,8 @@ generated functions, and `args` are the arguments.
   generated code.
 - `filter_observed`: A predicate function to filter out observed equations which should
   not be added to the generated code.
+- `obsidxs_to_use`: An iterable of `Int` of the specific observed equations to use in this
+  function. This elides automatic observed detection and prevents usage of `filter_observed`.
 - `create_bindings`: Whether to explicitly destructure arrays of symbolics present in
   `args` in the generated code. If `false`, all usages of the individual symbolics will
   instead call `getindex` on the relevant argument. This is useful if the generated
@@ -279,14 +281,18 @@ Base.@nospecializeinfer function build_function_wrapper(
         p_end = is_time_dependent(sys) ? length(args) - 1 : length(args),
         non_standard_param_layout = false,
         wrap_delays = is_dde(sys), histfn = DDE_HISTORY_FUN, histfn_symbolic = histfn, wrap_code = identity,
-        add_observed = true, filter_observed = Returns(true),
+        add_observed = true, filter_observed = Returns(true), obsidxs_to_use = nothing,
         create_bindings = false, output_type = nothing, mkarray = nothing,
         wrap_mtkparameters = true, extra_assignments = Assignment[], cse = true,
         optimize = nothing, kwargs...
     )
     isscalar = !(expr isa AbstractArray || symbolic_type(expr) == ArraySymbolic())
-    # filter observed equations
-    obs = filter(filter_observed, observed(sys))
+    if obsidxs_to_use === nothing
+        # filter observed equations
+        obs = filter(filter_observed, observed(sys))
+    else
+        obs = observed(sys)
+    end
     # turn delayed unknowns into calls to the history function
     if wrap_delays
         param_arg = is_split(sys) ? MTKPARAMETERS_ARG : generated_argument_name(p_start)
@@ -322,9 +328,13 @@ Base.@nospecializeinfer function build_function_wrapper(
     end
     # only get the necessary observed equations, avoiding extra computation
     if add_observed && !isempty(obs)
-        obsidxs = BitSet(observed_equations_used_by(sys, expr; obs))
+        if obsidxs_to_use !== nothing
+            obsidxs = Set{Int}(obsidxs_to_use)
+        else
+            obsidxs = Set{Int}(observed_equations_used_by(sys, expr; obs))
+        end
     else
-        obsidxs = BitSet()
+        obsidxs = Set{Int}()
     end
     # similarly for parameter dependency equations
     reqd_bound_pars = OrderedSet{SymbolicT}()
@@ -340,7 +350,9 @@ Base.@nospecializeinfer function build_function_wrapper(
     end
     for dervar in dervars_in_expr
         bound_parameters_used_by!(reqd_bound_pars, sys, dervars[dervar]; bgraph)
-        union!(obsidxs, observed_equations_used_by(sys, dervars[dervar]; obs))
+        if add_observed && !isempty(obs) && obsidxs_to_use !== nothing
+            union!(obsidxs, observed_equations_used_by(sys, dervars[dervar]; obs))
+        end
     end
     bound_parameters_used_by!(reqd_bound_pars, sys, extra_assignments; bgraph)
     sort_bound_parameters!(reqd_bound_pars, sys; bgraph)
@@ -364,6 +376,7 @@ Base.@nospecializeinfer function build_function_wrapper(
         push!(assignments, p ← binds[p])
     end
     obsidxs = collect(obsidxs)
+    sort!(obsidxs)
     for eq in obs[obsidxs]
         push!(assignments, eq.lhs ← eq.rhs)
     end
