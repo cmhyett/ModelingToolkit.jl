@@ -891,14 +891,16 @@ function generate_control_function(
         push!(u, du)
     end
 
-    # Open loops for known disturbance APs and collect their variables
+    # Open loops for known disturbance APs and collect their variables.
+    # Use append! (not push!) because open_loop returns a Vector{SymbolicT}
+    # from Break, and the base function expects a flat vector of symbolic vars
     known_dist_vars = nothing
     if known_disturbance_inputs !== nothing
         known_disturbance_inputs = canonicalize_ap(sys, known_disturbance_inputs)
         known_dist_vars = []
         for kd_ap in known_disturbance_inputs
             sys, (du, _) = open_loop(sys, kd_ap)
-            push!(known_dist_vars, du)
+            append!(known_dist_vars, du)
         end
     end
 
