@@ -92,12 +92,6 @@ Base.@nospecializeinfer @fallback_iip_specialize function SciMLBase.ODEFunction{
     )
 
     odefn = maybe_codegen_scimlfn(expression, ODEFunction{iip, spec}, args; kwargs...)
-    # Widen the bounded type parameters (OverrideInitData, ODENLStepData) so that all
-    # AutoSpecialize ODEFunctions share the same type regardless of model-specific
-    # init functions, preventing recompilation of promote_f and solver code per model.
-    if expression != Val{true} && spec === SciMLBase.AutoSpecialize
-        odefn = SciMLBase.widen_bounded_type_params(odefn)
-    end
     return odefn
 end
 
