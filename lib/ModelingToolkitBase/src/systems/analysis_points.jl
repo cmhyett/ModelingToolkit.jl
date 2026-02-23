@@ -865,9 +865,11 @@ function open_loop(sys, ap::Union{Symbol, AnalysisPoint}; system_modifier = iden
 end
 
 """
-    generate_control_function(sys::ModelingToolkitBase.AbstractSystem, input_ap_name::Union{Symbol, Vector{Symbol}, AnalysisPoint, Vector{AnalysisPoint}}, dist_ap_name::Union{Symbol, Vector{Symbol}, AnalysisPoint, Vector{AnalysisPoint}}; system_modifier = identity, kwargs)
+    generate_control_function(sys::ModelingToolkitBase.AbstractSystem, input_ap_name::Union{Symbol, Vector{Symbol}, AnalysisPoint, Vector{AnalysisPoint}}, dist_ap_name::Union{Symbol, Vector{Symbol}, AnalysisPoint, Vector{AnalysisPoint}}; system_modifier = identity, known_disturbance_inputs = nothing, kwargs)
 
 When called with analysis points as input arguments, we assume that all analysis points corresponds to connections that should be opened (broken). The use case for this is to get rid of input signal blocks, such as `Step` or `Sine`, since these are useful for simulation but are not needed when using the plant model in a controller or state estimator.
+
+The `known_disturbance_inputs` keyword accepts analysis points (or symbols) for disturbances that should be treated as known (i.e., provided as an additional function argument `w`). The loops at these analysis points are opened and the resulting variables are forwarded to the base `generate_control_function`.
 """
 function generate_control_function(
         sys::ModelingToolkitBase.AbstractSystem, input_ap_name::Union{
@@ -877,6 +879,9 @@ function generate_control_function(
             Nothing, Symbol, Vector{Symbol}, AnalysisPoint, Vector{AnalysisPoint},
         } = nothing;
         system_modifier = identity,
+        known_disturbance_inputs::Union{
+            Nothing, Symbol, Vector{Symbol}, AnalysisPoint, Vector{AnalysisPoint},
+        } = nothing,
         kwargs...
     )
     input_ap_name = canonicalize_ap(sys, input_ap_name)
@@ -885,8 +890,22 @@ function generate_control_function(
         sys, (du, _) = open_loop(sys, input_ap)
         push!(u, du)
     end
+
+    # Open loops for known disturbance APs and collect their variables
+    known_dist_vars = nothing
+    if known_disturbance_inputs !== nothing
+        known_disturbance_inputs = canonicalize_ap(sys, known_disturbance_inputs)
+        known_dist_vars = []
+        for kd_ap in known_disturbance_inputs
+            sys, (du, _) = open_loop(sys, kd_ap)
+            push!(known_dist_vars, du)
+        end
+    end
+
     if dist_ap_name === nothing
-        return ModelingToolkitBase.generate_control_function(system_modifier(sys), u; kwargs...)
+        return ModelingToolkitBase.generate_control_function(
+            system_modifier(sys), u;
+            known_disturbance_inputs = known_dist_vars, kwargs...)
     end
 
     dist_ap_name = canonicalize_ap(sys, dist_ap_name)
@@ -896,5 +915,7 @@ function generate_control_function(
         push!(d, du)
     end
 
-    return ModelingToolkitBase.generate_control_function(system_modifier(sys), u, d; kwargs...)
+    return ModelingToolkitBase.generate_control_function(
+        system_modifier(sys), u, d;
+        known_disturbance_inputs = known_dist_vars, kwargs...)
 end
