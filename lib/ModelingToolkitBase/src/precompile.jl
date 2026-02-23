@@ -128,17 +128,3 @@ end
 
 precompile(Tuple{typeof(SymbolicUtils.isequal_somescalar), Float64, Float64})
 precompile(Tuple{typeof(Base.:(var"==")), ModelingToolkitBase.Initial, ModelingToolkitBase.Initial})
-
-# Precompile promote_f for the AutoSpecialize + IIP ODE case with common types.
-# This is the code path that DiffEqBase.__init calls to wrap the function before
-# dispatching to the solver. Without this, the first solve() after loading MTK
-# pays the cost of compiling FunctionWrappersWrapper construction.
-# Note: The full solve path (OrdinaryDiffEq) cannot be precompiled here because
-# ModelingToolkitBase does not depend on any ODE solver package. To fully
-# precompile the solve path, a downstream package (e.g., ModelingToolkit itself
-# or an extension) would need to add:
-#   using OrdinaryDiffEqDefault
-#   @compile_workload begin
-#       prob = ODEProblem(compiled_sys, u0map, tspan)
-#       solve(prob)
-#   end
