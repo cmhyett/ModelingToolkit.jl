@@ -1,4 +1,5 @@
 using ModelingToolkitBase
+using SymbolicIndexingInterface: SymbolicIndexingInterface as SII
 using Test
 MT = ModelingToolkitBase
 
@@ -26,3 +27,26 @@ struct MyMVS <: MT.AbstractSystem
 end
 ivs = independent_variables(MyMVS([t, x], "sys", []))
 @test all(isequal.(ivs, [t, x]))
+
+@testset "all_symbols on non-complete system" begin
+    @variables y(t)
+    @parameters p1 p2 = 2p1
+    sys = MT.System(Equation[], t, [y], [p1, p2]; name = :sys)
+
+    # Should not throw on a non-complete system
+    syms = SII.all_symbols(sys)
+    @test y ∈ syms
+    @test p1 ∈ syms
+    @test p2 ∈ syms
+    @test t ∈ syms
+
+    # After completing, bound parameters should also appear
+    csys = complete(sys)
+    csyms = SII.all_symbols(csys)
+    @test csys.y ∈ csyms
+    @test csys.p1 ∈ csyms
+    @test t ∈ csyms
+    # p2 is a bound parameter; it should still be in all_symbols
+    @test csys.p2 ∈ csyms
+    @test csys.p2 ∈ collect(MT.bound_parameters(csys))
+end
