@@ -37,6 +37,7 @@ function generate_rhs(
         sys::System; implicit_dae = false,
         scalar = false, expression = Val{true}, wrap_gfw = Val{false},
         eval_expression = false, eval_module = @__MODULE__, override_discrete = false,
+        cachesyms = nothing,
         kwargs...
     )
     dvs = unknowns(sys)
@@ -45,6 +46,9 @@ function generate_rhs(
     obs = observed(sys)
     u = dvs
     p = reorder_parameters(sys, ps)
+    if cachesyms isa Vector{Vector{SymbolicT}}
+        append!(p, cachesyms)
+    end
     t = get_iv(sys)
     ddvs = nothing
     extra_assignments = Assignment[]
@@ -194,8 +198,12 @@ function calculate_jacobian(
         sys::System;
         sparse = false, simplify = false, dvs = unknowns(sys)
     )
-    obs = Dict(eq.lhs => eq.rhs for eq in observed(sys))
-    rhs = map(eq -> fixpoint_sub(eq.rhs - eq.lhs, obs), equations(sys))
+    eqs = full_equations(sys)
+    rhs = SymbolicT[]
+    sizehint!(rhs, length(eqs))
+    for eq in eqs
+        push!(rhs, eq.rhs - eq.lhs)
+    end
 
     if sparse
         jac = sparsejacobian(rhs, dvs; simplify)
