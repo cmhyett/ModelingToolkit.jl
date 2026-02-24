@@ -91,7 +91,11 @@ Base.@nospecializeinfer @fallback_iip_specialize function SciMLBase.ODEFunction{
         nlstep_data = ode_nlstep,
     )
 
-    maybe_codegen_scimlfn(expression, ODEFunction{iip, spec}, args; kwargs...)
+    odefn = maybe_codegen_scimlfn(expression, ODEFunction{iip, spec}, args; kwargs...)
+    if expression != Val{true} && spec === SciMLBase.AutoSpecialize
+        odefn = SciMLBase.widen_bounded_type_params(odefn)
+    end
+    return odefn
 end
 
 Base.@nospecializeinfer @fallback_iip_specialize function SciMLBase.ODEProblem{iip, spec}(

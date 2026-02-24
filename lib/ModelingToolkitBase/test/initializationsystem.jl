@@ -1722,7 +1722,9 @@ end
     @variables x(t) = 1 y(t) = 1
     eqs = [D(x) ~ α * x - β * x * y, D(y) ~ -δ * y + γ * x * y]
     @named sys = System(eqs, t)
-    prob = ODEProblem(complete(sys), [], (0.0, 1))
+    # AutoSpecialize uses Union types for compilation sharing, so @inferred
+    # is only expected to pass with FullSpecialize.
+    prob = ODEProblem{true, SciMLBase.FullSpecialize}(complete(sys), [], (0.0, 1))
     @inferred remake(prob; u0 = 2 .* prob.u0, p = prob.p)
     @inferred solve(prob)
 end
