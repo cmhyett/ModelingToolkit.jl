@@ -497,24 +497,24 @@ if @isdefined(ModelingToolkit)
 
         @named motor_dynamics = Blocks.FirstOrder(T = 0.001)
 
-        x0 = [0.85, 1, π/12, π/2]
+        x0 = [0.85, 1, π / 12, π / 2]
 
-        @variables  u(t)[1:2]=zeros(2)
-        @variables y(t)=0.85 v(t)=1 ϕ(t)=π/12 ω(t)=π/2
+        @variables  u(t)[1:2] = zeros(2)
+        @variables y(t) = 0.85 v(t) = 1 ϕ(t) = π / 12 ω(t) = π / 2
 
         eqs = [
             D(y) ~ v,
-            D(v) ~ -gravity + gain_u1 * cos(ϕ)*(motor_dynamics.output.u + gravity/gain_u1),
+            D(v) ~ -gravity + gain_u1 * cos(ϕ) * (motor_dynamics.output.u + gravity / gain_u1),
             D(ϕ) ~ ω,
             D(ω) ~ -d0 * ϕ - d1 * ω + n0 * u[2],
             motor_dynamics.input.u ~ u[1],
         ]
-        @named model = System(eqs, t; systems=[motor_dynamics])
+        @named model = System(eqs, t; systems = [motor_dynamics])
 
         f, x, p, simplified_system = ModelingToolkit.generate_control_function(model, [u;])
 
-        x0 = ModelingToolkitBase.get_u0(simplified_system, []) 
-        p = ModelingToolkitBase.get_p(simplified_system, []) 
+        x0 = ModelingToolkitBase.get_u0(simplified_system, [])
+        p = ModelingToolkitBase.get_p(simplified_system, [])
 
         @test f[1](x0, zeros(2), p, 0) != f[1](x0, ones(2), p, 0)
     end

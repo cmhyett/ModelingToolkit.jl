@@ -1867,7 +1867,7 @@ if @isdefined(ModelingToolkit)
                 arr[2] ~ 2s
             ]
             continuous_events = [
-                [s ~ 0.5] => Symbolics.Equation[]
+                [s ~ 0.5] => Symbolics.Equation[],
             ]
             System(eqs, t, [s; collect(arr)], []; name, continuous_events)
         end

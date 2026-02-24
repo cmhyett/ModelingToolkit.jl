@@ -2,8 +2,10 @@ using SymbolicUtils: Rewriters
 using Graphs.Experimental.Traversals
 
 alias_elimination(sys) = alias_elimination!(TearingState(sys))[1]
-function alias_elimination!(state::TearingState; fully_determined = true,
-                            print_underconstrained_variables = false, kwargs...)
+function alias_elimination!(
+        state::TearingState; fully_determined = true,
+        print_underconstrained_variables = false, kwargs...
+    )
     sys = state.sys
     StateSelection.complete!(state.structure)
     # Previously, underconstrained variables were zeroed out. This leads to significant

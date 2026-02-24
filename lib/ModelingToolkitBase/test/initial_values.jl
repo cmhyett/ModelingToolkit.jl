@@ -360,7 +360,7 @@ end
     @test prob.u0 isa SVector
     @test prob.p.tunable isa SVector
     @test prob.p.initials isa SVector
-    initdata = prob.f.initialization_data;
+    initdata = prob.f.initialization_data
     @test state_values(initdata.initializeprob) isa SVector
     if @isdefined(ModelingToolkit)
         @test initdata.initializeprob isa SCCNonlinearProblem

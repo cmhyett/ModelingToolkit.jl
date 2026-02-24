@@ -1531,7 +1531,7 @@ end
     prob.ps[Initial(x)] = 0.5
     integ = init(prob, Tsit5(); abstol = 1.0e-6, reltol = 1.0e-6)
     @test integ[x] ≈ 0.5
-    @test abs.(integ[y]) ≈ [1.0, sqrt(2.75)] atol = 1e-6
+    @test abs.(integ[y]) ≈ [1.0, sqrt(2.75)] atol = 1.0e-6
     prob.ps[Initial(y[1])] = 0.5
     integ = init(prob, Tsit5(); abstol = 1.0e-6, reltol = 1.0e-6)
     @test integ[x] ≈ 0.5
@@ -1948,15 +1948,18 @@ end
     if @isdefined(ModelingToolkit)
         @parameters g
         @variables x(t) y(t) [state_priority = 10] λ(t)
-        eqs = [D(D(x)) ~ λ * x
-               D(D(y)) ~ λ * y - g
-               x^2 + y^2 ~ 1]
+        eqs = [
+            D(D(x)) ~ λ * x
+            D(D(y)) ~ λ * y - g
+            x^2 + y^2 ~ 1
+        ]
         @mtkcompile pend = System(eqs, t)
 
         iprob = ModelingToolkit.InitializationProblem(
             pend, 0.0,
             [x => 1.0, D(y) => 0.0, g => 1],
-            guesses = [λ => 1, y => 0.0])
+            guesses = [λ => 1, y => 0.0]
+        )
         isol = solve(iprob)
 
         # previous behavior was `==` for these

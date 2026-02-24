@@ -1177,7 +1177,7 @@ function maybe_build_initialization_problem(
     )
     needs_remake = false
     _u0 = state_values(initializeprob)
-     if _u0 !== nothing
+    if _u0 !== nothing
         if ArrayInterface.ismutable(_u0)
             __u0 = floatT.(_u0)
         else
