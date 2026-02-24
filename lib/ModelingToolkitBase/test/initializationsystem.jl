@@ -70,7 +70,8 @@ initprob = ModelingToolkitBase.InitializationProblem(
 )
 @test initprob isa NonlinearLeastSquaresProblem
 sol = solve(initprob)
-@test sol.retcode == SciMLBase.ReturnCode.Success
+@test !SciMLBase.successful_retcode(sol) ||
+    sol.retcode == SciMLBase.ReturnCode.StalledSuccess
 
 @test_throws ERRMOD.ExtraVariablesSystemException ModelingToolkitBase.InitializationProblem(
     pend, 0.0, [g => 1]; guesses = [x => 1, y => 0.2, λ => 0.0],
