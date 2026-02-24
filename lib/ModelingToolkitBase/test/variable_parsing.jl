@@ -34,8 +34,8 @@ s1 = Num(SSym(:s; type = Real, shape = ShapeVecT()))
 @test ModelingToolkitBase.isparameter(s)
 @test ModelingToolkitBase.isparameter(σ)
 
-@test @macroexpand(@parameters x, y, z(t)) == @macroexpand(@parameters x y z(t))
-@test @macroexpand(@variables x, y, z(t)) == @macroexpand(@variables x y z(t))
+@test Base.remove_linenums!(@macroexpand(@parameters x, y, z(t))) == Base.remove_linenums!(@macroexpand(@parameters x y z(t)))
+@test Base.remove_linenums!(@macroexpand(@variables x, y, z(t))) == Base.remove_linenums!((@macroexpand(@variables x y z(t))))
 
 # Test array expressions
 @parameters begin
