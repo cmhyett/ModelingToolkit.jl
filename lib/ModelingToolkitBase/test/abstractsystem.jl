@@ -35,18 +35,19 @@ ivs = independent_variables(MyMVS([t, x], "sys", []))
 
     # Should not throw on a non-complete system
     syms = SII.all_symbols(sys)
-    @test y ∈ syms
-    @test p1 ∈ syms
-    @test p2 ∈ syms
-    @test t ∈ syms
+    @test any(isequal(y), syms)
+    @test any(isequal(p1), syms)
+    @test any(isequal(p2), syms)
+    @test any(isequal(t), syms)
 
     # After completing, bound parameters should also appear
     csys = complete(sys)
     csyms = SII.all_symbols(csys)
-    @test csys.y ∈ csyms
-    @test csys.p1 ∈ csyms
-    @test t ∈ csyms
+    @test any(isequal(csys.y), csyms)
+    @test any(isequal(csys.p1), csyms)
+    @test any(isequal(t), csyms)
+
     # p2 is a bound parameter; it should still be in all_symbols
-    @test csys.p2 ∈ csyms
-    @test csys.p2 ∈ collect(MT.bound_parameters(csys))
+    @test any(isequal(csys.p2), csyms)
+    @test any(isequal(csys.p2), collect(MT.bound_parameters(csys)))
 end
