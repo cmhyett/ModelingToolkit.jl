@@ -9,8 +9,8 @@ using PrecompileTools, Reexport
     # ONLY here for the invalidations
     import REPL
     using OffsetArrays: Origin
-    import BlockArrays: BlockArray, BlockedArray, Block, blocksize, blocksizes, blockpush!,
-        undef_blocks, blocks
+    import BlockArrays: BlockArray, BlockVector, BlockedArray, Block, blocksize, blocksizes, blockpush!,
+        undef_blocks, blocks, eachblock
 end
 
 import SymbolicUtils
@@ -40,7 +40,7 @@ else
     const IntDisjointSet = IntDisjointSets
 end
 using Base.Threads
-using Setfield
+using Setfield, ConstructionBase
 import Libdl
 using DocStringExtensions
 using Base: RefValue
