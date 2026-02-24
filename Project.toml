@@ -1,7 +1,7 @@
 name = "ModelingToolkit"
 uuid = "961ee093-0014-501f-94e3-6117800e7a78"
-authors = ["Yingbo Ma <mayingbo5@gmail.com>", "Chris Rackauckas <accounts@chrisrackauckas.com> and contributors"]
 version = "11.11.1"
+authors = ["Yingbo Ma <mayingbo5@gmail.com>", "Chris Rackauckas <accounts@chrisrackauckas.com> and contributors"]
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -48,9 +48,11 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 [weakdeps]
 FMIImport = "9fcbc62e-52a0-44e9-a616-1359a0008194"
 
-[sources]
-ModelingToolkitBase = {subdir = "lib/ModelingToolkitBase"}
-SciCompDSL = {subdir = "lib/SciCompDSL"}
+[sources.ModelingToolkitBase]
+subdir = "lib/ModelingToolkitBase"
+
+[sources.SciCompDSL]
+subdir = "lib/SciCompDSL"
 
 [extensions]
 MTKFMIExt = "FMIImport"
