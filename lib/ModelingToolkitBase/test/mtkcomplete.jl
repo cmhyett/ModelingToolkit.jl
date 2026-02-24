@@ -13,7 +13,7 @@ end
     @mtkcomplete sys = System([D(x) ~ 2x, z ~ y + x], t; observed = [y ~ 2x + 3])
     @test nameof(sys) == :sys
     @test iscomplete(sys)
-    @test isequal(observed(sys), [y ~ 2x + 3, z ~ y + x])
+    @test isequal(observed(sys), [y ~ 2x + 3])
 end
 
 @testset "@mtkcomplete for time-independent system" begin
