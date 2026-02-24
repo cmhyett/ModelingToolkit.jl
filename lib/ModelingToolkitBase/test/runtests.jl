@@ -16,6 +16,12 @@ function activate_downstream_env()
     return Pkg.instantiate()
 end
 
+function activate_jet_env()
+    Pkg.activate("jet")
+    Pkg.develop([PackageSpec(path = dirname(@__DIR__))])
+    return Pkg.instantiate()
+end
+
 @time begin
     if GROUP == "All" || GROUP == "InterfaceI"
         @testset "InterfaceI" begin
@@ -113,5 +119,10 @@ end
         @safetestset "InfiniteOpt Extension Test" include("extensions/test_infiniteopt.jl")
         # @safetestset "Auto Differentiation Test" include("extensions/ad.jl")
         @safetestset "Dynamic Optimization Collocation Solvers" include("extensions/dynamic_optimization.jl")
+    end
+
+    if GROUP == "JET"
+        activate_jet_env()
+        @testset "JET static analysis" include("jet/jet_tests.jl")
     end
 end

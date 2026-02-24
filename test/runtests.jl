@@ -25,6 +25,12 @@ function activate_downstream_env()
     return Pkg.instantiate()
 end
 
+function activate_jet_env()
+    Pkg.activate("jet")
+    Pkg.develop([MTKBasePkgSpec, PackageSpec(path = dirname(@__DIR__))])
+    return Pkg.instantiate()
+end
+
 macro mtktestset(name, file)
     return quote
         @safetestset $name begin
@@ -110,5 +116,10 @@ end
         @mtktestset("InfiniteOpt Extension Test", "extensions/test_infiniteopt.jl")
         # @mtktestset("Auto Differentiation Test", "extensions/ad.jl")
         @mtktestset("Dynamic Optimization Collocation Solvers", "extensions/dynamic_optimization.jl")
+    end
+
+    if GROUP == "JET"
+        activate_jet_env()
+        @testset "JET static analysis" include("jet/jet_tests.jl")
     end
 end

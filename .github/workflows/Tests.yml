@@ -46,7 +46,14 @@ jobs:
           - ModelingToolkitBase/Extended
           - ModelingToolkitBase/RegressionI
           - ModelingToolkitBase/Extensions
+          - ModelingToolkitBase/JET
+          - ModelingToolkit/JET
           - SciCompDSL/All
+        exclude:
+          - version: "pre"
+            pkggroup: ModelingToolkitBase/JET
+          - version: "pre"
+            pkggroup: ModelingToolkit/JET
     runs-on: ${{ vars.USE_SELF_HOSTED == 'true' && 'self-hosted' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v6
