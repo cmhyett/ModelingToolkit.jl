@@ -34,8 +34,13 @@ s1 = Num(SSym(:s; type = Real, shape = ShapeVecT()))
 @test ModelingToolkitBase.isparameter(s)
 @test ModelingToolkitBase.isparameter(σ)
 
-@test Base.remove_linenums!(@macroexpand(@parameters x, y, z(t))) == Base.remove_linenums!(@macroexpand(@parameters x y z(t)))
-@test Base.remove_linenums!(@macroexpand(@variables x, y, z(t))) == Base.remove_linenums!((@macroexpand(@variables x y z(t))))
+function expr_equal(a, b)
+    a isa Expr && b isa Expr || return a == b
+    a.head === b.head && length(a.args) == length(b.args) &&
+        all(expr_equal(x, y) for (x, y) in zip(a.args, b.args))
+end
+@test expr_equal(Base.remove_linenums!(@macroexpand(@parameters x, y, z(t))), Base.remove_linenums!(@macroexpand(@parameters x y z(t))))
+@test expr_equal(Base.remove_linenums!(@macroexpand(@variables x, y, z(t))), Base.remove_linenums!((@macroexpand(@variables x y z(t)))))
 
 # Test array expressions
 @parameters begin
