@@ -42,7 +42,13 @@ end
     @test ps2.tunable isa SVector
     @test ps2.initials isa SVector
     @test ps2.discrete isa Tuple{<:BlockedVector{Float64, <:SVector}}
-    @test ps2.constant isa Tuple{<:SVector, <:SVector, <:SVector{1, <:SMatrix}}
+    # Check types of ps2.constant, but order isn't guaranteed,
+    #  so check against permutations
+    @test ps2.constant isa Union{
+        Tuple{<:SVector, <:SVector, <:SVector{1, <:SMatrix}},
+        Tuple{<:SVector, <:SVector{1, <:SMatrix}, <:SVector},
+        Tuple{<:SVector{1, <:SMatrix}, <:SVector, <:SVector}
+    }
     @test ps2.nonnumeric isa Tuple{<:SVector}
 end
 
