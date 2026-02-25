@@ -47,7 +47,7 @@ end
     @test ps2.constant isa Union{
         Tuple{<:SVector, <:SVector, <:SVector{1, <:SMatrix}},
         Tuple{<:SVector, <:SVector{1, <:SMatrix}, <:SVector},
-        Tuple{<:SVector{1, <:SMatrix}, <:SVector, <:SVector}
+        Tuple{<:SVector{1, <:SMatrix}, <:SVector, <:SVector},
     }
     @test ps2.nonnumeric isa Tuple{<:SVector}
 end
