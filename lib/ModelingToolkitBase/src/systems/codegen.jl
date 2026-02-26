@@ -639,11 +639,11 @@ function generate_boundary_conditions(
     # sol = get_bv_solution_symbol(ns)
 
     cons = [con.lhs - con.rhs for con in constraints(sys)]
-    # conssubs = Dict()
-    # get_constraint_unknown_subs!(conssubs, cons, stidxmap, iv, sol)
-    # cons = map(x -> substitute(x, conssubs), cons)
+    conssubs = Dict{SymbolicT, SymbolicT}()
+    get_constraint_unknown_subs!(conssubs, cons, stidxmap, iv, BVP_SOLUTION)
+    cons = map(x -> substitute(x, conssubs), cons)
 
-    init_conds = Any[]
+    init_conds = SymbolicT[]
     for i in u0_idxs
         expr = BVP_SOLUTION(t0)[i] - u0[i]
         push!(init_conds, expr)
