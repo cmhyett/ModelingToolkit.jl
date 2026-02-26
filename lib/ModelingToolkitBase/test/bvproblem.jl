@@ -1,6 +1,7 @@
 ### TODO: update when BoundaryValueDiffEqAscher is updated to use the normal boundary condition conventions
 using OrdinaryDiffEq
 using BoundaryValueDiffEqMIRK, BoundaryValueDiffEqAscher
+using OptimizationIpopt
 using ModelingToolkitBase
 using SciMLBase
 using ModelingToolkitBase: t_nounits as t, D_nounits as D
@@ -361,4 +362,35 @@ end
         lksys; expression = Val{false}, wrap_gfw = Val{true}
     )
     @test costfn(sol, bvp.p) ≈ log(sol(0.56; idxs = y(t)) + sol(0.0; idxs = x(t))) - sol(0.4; idxs = x(t))^2
+end
+
+@testset "Parameter elstimation" begin
+    @parameters α = 1.5 β = 1.0 [tunable=false] γ = 3.0 δ = 1.0
+    @variables x(t) y(t)
+
+    eqs = [D(x) ~ α * x - β * x * y,
+        D(y) ~ -γ * y + δ * x * y]
+
+    @mtkcompile sys0 = System(eqs, t)
+    tspan = (0.0, 1.0)
+    u0map = [x => 4.0, y => 2.0]
+    parammap = [α => 1.8, γ => 6.5]
+
+    oprob = ODEProblem(sys0, [u0map; parammap], tspan)
+    osol = solve(oprob, Tsit5())
+    ts = range(tspan..., length=51)
+    data = osol(ts, idxs=x).u
+
+    costs = [EvalAt(t)(x)-data[i] for (i, t) in enumerate(ts)]
+    consolidate(u, sub) = sum(abs2.(u))
+
+    @mtkcompile sys = System(eqs, t; costs, consolidate)
+
+    sys′ = subset_tunables(sys, [γ, α])
+
+    bprob = BVProblem(sys′, u0map, tspan; tune_parameters=true)
+    bsol = solve(bprob, MIRK4(; optimize = IpoptOptimizer()), dt=1e-3)
+
+    @test bsol.ps[α] ≈ 1.8 rtol=1e-2
+    @test bsol.ps[γ] ≈ 6.5 rtol=1e-2
 end
