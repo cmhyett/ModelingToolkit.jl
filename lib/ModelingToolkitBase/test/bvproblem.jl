@@ -153,16 +153,19 @@ function test_solvers(
     )
     for solver in solvers
         println("Solver: $solver")
-        sol = solve(prob, solver(), dt = dt, abstol = 1e-8, reltol=1e-8)
+        sol = solve(prob, solver(), dt = dt, abstol = 1.0e-8, reltol = 1.0e-8)
         @test SciMLBase.successful_retcode(sol.retcode)
         p = prob.p
         t = sol.t
         bc = prob.f.bc
         ns = length(prob.u0)
 
-        cache = init(prob, solver(), dt=dt, abstol = 1e-8, reltol=1e-8)
-        eval_sol = BoundaryValueDiffEqMIRK.EvalSol(BoundaryValueDiffEqMIRK.__restructure_sol(
-            sol.u, cache.in_size), cache.mesh, cache)
+        cache = init(prob, solver(), dt = dt, abstol = 1.0e-8, reltol = 1.0e-8)
+        eval_sol = BoundaryValueDiffEqMIRK.EvalSol(
+            BoundaryValueDiffEqMIRK.__restructure_sol(
+                sol.u, cache.in_size
+            ), cache.mesh, cache
+        )
         @test bc(zeros(ns), eval_sol, p, t) ≈ zeros(ns)
         if isinplace(prob.f)
             resid = zeros(ns)
@@ -206,9 +209,9 @@ end
     @mtkcompile lksys = System(eqs, t; constraints = constr)
 
     bvp = SciMLBase.BVProblem{true, SciMLBase.AutoSpecialize}(
-        lksys, u0map, tspan; guesses = guess, cse=false
+        lksys, u0map, tspan; guesses = guess, cse = false
     )
-    test_solvers(solvers, bvp, u0map, constr; dt = 1e-4)
+    test_solvers(solvers, bvp, u0map, constr; dt = 1.0e-4)
 
     # Testing that more complicated constraints give correct solutions.
     constr = [EvalAt(0.2)(y) + EvalAt(0.8)(x) ~ 3.0, EvalAt(0.3)(y) ~ 2.0]
@@ -216,14 +219,14 @@ end
     bvp = SciMLBase.BVProblem{false, SciMLBase.FullSpecialize}(
         lksys, u0map, tspan; guesses = guess
     )
-    test_solvers(solvers, bvp, u0map, constr; dt = 1e-4)
+    test_solvers(solvers, bvp, u0map, constr; dt = 1.0e-4)
 
     constr = [α * β - EvalAt(0.6)(x) ~ 0.0, EvalAt(0.2)(y) ~ 3.0]
     @mtkcompile lksys = System(eqs, t; constraints = constr)
     bvp = SciMLBase.BVProblem{true, SciMLBase.AutoSpecialize}(
         lksys, u0map, tspan; guesses = guess
     )
-    test_solvers(solvers, bvp, u0map, constr; dt = 1e-4)
+    test_solvers(solvers, bvp, u0map, constr; dt = 1.0e-4)
 end
 
 # Cartesian pendulum from the docs.
@@ -365,11 +368,13 @@ end
 end
 
 @testset "Parameter elstimation" begin
-    @parameters α = 1.5 β = 1.0 [tunable=false] γ = 3.0 δ = 1.0
+    @parameters α = 1.5 β = 1.0 [tunable = false] γ = 3.0 δ = 1.0
     @variables x(t) y(t)
 
-    eqs = [D(x) ~ α * x - β * x * y,
-        D(y) ~ -γ * y + δ * x * y]
+    eqs = [
+        D(x) ~ α * x - β * x * y,
+        D(y) ~ -γ * y + δ * x * y,
+    ]
 
     @mtkcompile sys0 = System(eqs, t)
     tspan = (0.0, 1.0)
@@ -378,19 +383,19 @@ end
 
     oprob = ODEProblem(sys0, [u0map; parammap], tspan)
     osol = solve(oprob, Tsit5())
-    ts = range(tspan..., length=51)
-    data = osol(ts, idxs=x).u
+    ts = range(tspan..., length = 51)
+    data = osol(ts, idxs = x).u
 
-    costs = [EvalAt(t)(x)-data[i] for (i, t) in enumerate(ts)]
+    costs = [EvalAt(t)(x) - data[i] for (i, t) in enumerate(ts)]
     consolidate(u, sub) = sum(abs2.(u))
 
     @mtkcompile sys = System(eqs, t; costs, consolidate)
 
     sys′ = subset_tunables(sys, [γ, α])
 
-    bprob = BVProblem(sys′, u0map, tspan; tune_parameters=true)
-    bsol = solve(bprob, MIRK4(; optimize = IpoptOptimizer()), dt=1e-3)
+    bprob = BVProblem(sys′, u0map, tspan; tune_parameters = true)
+    bsol = solve(bprob, MIRK4(; optimize = IpoptOptimizer()), dt = 1.0e-3)
 
-    @test bsol.ps[α] ≈ 1.8 rtol=1e-2
-    @test bsol.ps[γ] ≈ 6.5 rtol=1e-2
+    @test bsol.ps[α] ≈ 1.8 rtol = 1.0e-2
+    @test bsol.ps[γ] ≈ 6.5 rtol = 1.0e-2
 end
