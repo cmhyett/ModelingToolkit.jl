@@ -641,7 +641,8 @@ function generate_boundary_conditions(
     cons = [con.lhs - con.rhs for con in constraints(sys)]
     conssubs = Dict{SymbolicT, SymbolicT}()
     get_constraint_unknown_subs!(conssubs, cons, stidxmap, iv, BVP_SOLUTION)
-    cons = map(x -> substitute(x, conssubs), cons)
+    substituter = SU.Substituter{false)(conssubs)
+    cons = map(substituter, cons)
 
     init_conds = SymbolicT[]
     for i in u0_idxs
