@@ -1,6 +1,7 @@
 ### TODO: update when BoundaryValueDiffEqAscher is updated to use the normal boundary condition conventions
 using OrdinaryDiffEq
 using BoundaryValueDiffEqMIRK, BoundaryValueDiffEqAscher
+using OptimizationIpopt
 using ModelingToolkitBase
 using SciMLBase
 using ModelingToolkitBase: t_nounits as t, D_nounits as D
@@ -148,16 +149,24 @@ end
 end
 
 function test_solvers(
-        solvers, prob, u0map, constraints, equations = []; dt = 0.05, atol = 1.0e-2
+        solvers, prob, u0map, constraints, equations = []; dt = 0.005, atol = 1.0e-2
     )
     for solver in solvers
         println("Solver: $solver")
-        sol = solve(prob, solver(), dt = dt, abstol = atol)
+        sol = solve(prob, solver(), dt = dt, abstol = 1.0e-8, reltol = 1.0e-8)
         @test SciMLBase.successful_retcode(sol.retcode)
         p = prob.p
         t = sol.t
         bc = prob.f.bc
         ns = length(prob.u0)
+
+        cache = init(prob, solver(), dt = dt, abstol = 1.0e-8, reltol = 1.0e-8)
+        eval_sol = BoundaryValueDiffEqMIRK.EvalSol(
+            BoundaryValueDiffEqMIRK.__restructure_sol(
+                sol.u, cache.in_size
+            ), cache.mesh, cache
+        )
+        @test bc(zeros(ns), eval_sol, p, t) ≈ zeros(ns)
         if isinplace(prob.f)
             resid = zeros(ns)
             bc(resid, sol, p, t)
@@ -186,38 +195,38 @@ end
 # Simple System with BVP constraints.
 @testset "ODE with constraints" begin
     @parameters α = 1.5 β = 1.0 γ = 3.0 δ = 1.0
-    @variables x(..) y(..)
+    @variables x(t) y(t)
 
     eqs = [
-        D(x(t)) ~ α * x(t) - β * x(t) * y(t),
-        D(y(t)) ~ -γ * y(t) + δ * x(t) * y(t),
+        D(x) ~ α * x - β * x * y,
+        D(y) ~ -γ * y + δ * x * y,
     ]
 
     u0map = []
     tspan = (0.0, 1.0)
-    guess = [x(t) => 4.0, y(t) => 2.0]
-    constr = [x(0.6) ~ 3.5, x(0.3) ~ 7.0]
+    guess = [x => 4.0, y => 2.0]
+    constr = [EvalAt(0.6)(x) ~ 3.5, EvalAt(0.3)(x) ~ 7.0]
     @mtkcompile lksys = System(eqs, t; constraints = constr)
 
     bvp = SciMLBase.BVProblem{true, SciMLBase.AutoSpecialize}(
-        lksys, u0map, tspan; guesses = guess
+        lksys, u0map, tspan; guesses = guess, cse = false
     )
-    test_solvers(solvers, bvp, u0map, constr; dt = 0.05)
+    test_solvers(solvers, bvp, u0map, constr; dt = 1.0e-4)
 
     # Testing that more complicated constraints give correct solutions.
-    constr = [y(0.2) + x(0.8) ~ 3.0, y(0.3) ~ 2.0]
+    constr = [EvalAt(0.2)(y) + EvalAt(0.8)(x) ~ 3.0, EvalAt(0.3)(y) ~ 2.0]
     @mtkcompile lksys = System(eqs, t; constraints = constr)
     bvp = SciMLBase.BVProblem{false, SciMLBase.FullSpecialize}(
         lksys, u0map, tspan; guesses = guess
     )
-    test_solvers(solvers, bvp, u0map, constr; dt = 0.05)
+    test_solvers(solvers, bvp, u0map, constr; dt = 1.0e-4)
 
-    constr = [α * β - x(0.6) ~ 0.0, y(0.2) ~ 3.0]
+    constr = [α * β - EvalAt(0.6)(x) ~ 0.0, EvalAt(0.2)(y) ~ 3.0]
     @mtkcompile lksys = System(eqs, t; constraints = constr)
     bvp = SciMLBase.BVProblem{true, SciMLBase.AutoSpecialize}(
         lksys, u0map, tspan; guesses = guess
     )
-    test_solvers(solvers, bvp, u0map, constr)
+    test_solvers(solvers, bvp, u0map, constr; dt = 1.0e-4)
 end
 
 # Cartesian pendulum from the docs.
@@ -324,6 +333,15 @@ end
     _t = tspan[2]
     @test costfn(sol, prob.p, _t) ≈ (sol(0.6; idxs = x(t)) + 3)^2 + sol(0.3; idxs = x(t))^2
 
+    bvp = SciMLBase.BVProblem{true, SciMLBase.AutoSpecialize}(lksys, [u0map; parammap], tspan)
+    sol = solve(bvp, MIRK4(), dt = 0.05)
+    @test SciMLBase.successful_retcode(sol)
+
+    costfn = ModelingToolkitBase.generate_bvp_cost(
+        lksys; expression = Val{false}, wrap_gfw = Val{true}
+    )
+    @test costfn(sol, bvp.p) ≈ (sol(0.6; idxs = x(t)) + 3)^2 + sol(0.3; idxs = x(t))^2
+
     ### With a parameter
     @parameters t_c
     costs = [y(t_c) + x(0.0), x(0.4)^2]
@@ -338,4 +356,46 @@ end
     )
     @test costfn(sol, prob.p, _t) ≈
         log(sol(0.56; idxs = y(t)) + sol(0.0; idxs = x(t))) - sol(0.4; idxs = x(t))^2
+
+    bvp = SciMLBase.BVProblem{true, SciMLBase.AutoSpecialize}(lksys, [u0map; parammap], tspan)
+    sol = solve(bvp, MIRK4(), dt = 0.05)
+    @test SciMLBase.successful_retcode(sol)
+
+    costfn = ModelingToolkitBase.generate_bvp_cost(
+        lksys; expression = Val{false}, wrap_gfw = Val{true}
+    )
+    @test costfn(sol, bvp.p) ≈ log(sol(0.56; idxs = y(t)) + sol(0.0; idxs = x(t))) - sol(0.4; idxs = x(t))^2
+end
+
+@testset "Parameter estimation" begin
+    @parameters α = 1.5 β = 1.0 [tunable = false] γ = 3.0 δ = 1.0
+    @variables x(t) y(t)
+
+    eqs = [
+        D(x) ~ α * x - β * x * y,
+        D(y) ~ -γ * y + δ * x * y,
+    ]
+
+    @mtkcompile sys0 = System(eqs, t)
+    tspan = (0.0, 1.0)
+    u0map = [x => 4.0, y => 2.0]
+    parammap = [α => 1.8, γ => 6.5]
+
+    oprob = ODEProblem(sys0, [u0map; parammap], tspan)
+    osol = solve(oprob, Tsit5())
+    ts = range(tspan..., length = 51)
+    data = osol(ts, idxs = x).u
+
+    costs = [EvalAt(t)(x) - data[i] for (i, t) in enumerate(ts)]
+    consolidate(u, sub) = sum(abs2.(u))
+
+    @mtkcompile sys = System(eqs, t; costs, consolidate)
+
+    sys′ = subset_tunables(sys, [γ, α])
+
+    bprob = BVProblem(sys′, u0map, tspan; tune_parameters = true)
+    bsol = solve(bprob, MIRK4(; optimize = IpoptOptimizer()), dt = 1.0e-3)
+
+    @test bsol.ps[α] ≈ 1.8 rtol = 1.0e-2
+    @test bsol.ps[γ] ≈ 6.5 rtol = 1.0e-2
 end

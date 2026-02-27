@@ -639,11 +639,12 @@ function generate_boundary_conditions(
     # sol = get_bv_solution_symbol(ns)
 
     cons = [con.lhs - con.rhs for con in constraints(sys)]
-    # conssubs = Dict()
-    # get_constraint_unknown_subs!(conssubs, cons, stidxmap, iv, sol)
-    # cons = map(x -> substitute(x, conssubs), cons)
+    conssubs = Dict{SymbolicT, SymbolicT}()
+    get_constraint_unknown_subs!(conssubs, cons, stidxmap, iv, BVP_SOLUTION)
+    substituter = SU.Substituter{false}(conssubs)
+    cons = map(substituter, cons)
 
-    init_conds = Any[]
+    init_conds = SymbolicT[]
     for i in u0_idxs
         expr = BVP_SOLUTION(t0)[i] - u0[i]
         push!(init_conds, expr)
@@ -704,6 +705,56 @@ function generate_cost(
     f_oop = eval_or_rgf(res; eval_expression, eval_module)
     return maybe_compile_function(
         expression, wrap_gfw, (2, nargs, is_split(sys)), res; eval_expression, eval_module
+    )
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Generate the cost function for a BVP [`System`](@ref). The generated function has the
+signature `cost(sol, p)` where `sol` is a solution interpolation object (callable as
+`sol(t)` to get state at time `t`) and `p` is the parameter object.
+
+# Keyword Arguments
+
+$GENERATE_X_KWARGS
+
+All other keyword arguments are forwarded to [`build_function_wrapper`](@ref).
+"""
+function generate_bvp_cost(
+        sys::System; expression = Val{true}, wrap_gfw = Val{false},
+        eval_expression = false, eval_module = @__MODULE__, cse = true,
+        checkbounds = false, kwargs...
+    )
+    obj = cost(sys)
+    _iszero(obj) && return nothing
+
+    iv = get_iv(sys)
+    sts = unknowns(sys)
+    ps = reorder_parameters(sys)
+    stidxmap = Dict([v => i for (i, v) in enumerate(sts)])
+
+    # Substitute x(t_val) -> BVP_SOLUTION(t_val)[idx] for all state evaluations
+    costsubs = Dict()
+    get_constraint_unknown_subs!(costsubs, [obj], stidxmap, iv, BVP_SOLUTION)
+    obj = substitute(obj, costsubs)
+
+    # Build function with signature (sol, p) where sol = BVP_SOLUTION
+    # The histfn mechanism replaces BVP_SOLUTION with the sol argument
+    res = build_function_wrapper(
+        sys, obj, ps...;
+        expression = Val{true},
+        p_start = 1,  # sol goes before parameters
+        p_end = length(ps),
+        wrap_delays = true,
+        histfn = (p, t) -> BVP_SOLUTION(t),
+        histfn_symbolic = BVP_SOLUTION,
+        cse, checkbounds, kwargs...
+    )
+
+    # (2, 2, is_split) means: 2 args out-of-place, 2 original args, split status
+    return maybe_compile_function(
+        expression, wrap_gfw, (2, 2, is_split(sys)), res; eval_expression, eval_module
     )
 end
 
@@ -1121,7 +1172,7 @@ end
 
 Generates a function that computes the observed value(s) `ts` in the system `sys`, while making the assumption that there are no cycles in the equations.
 
-## Arguments 
+## Arguments
 - `sys`: The system for which to generate the function
 - `ts`: The symbolic observed values whose value should be computed
 
