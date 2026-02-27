@@ -367,7 +367,7 @@ end
     @test costfn(sol, bvp.p) ≈ log(sol(0.56; idxs = y(t)) + sol(0.0; idxs = x(t))) - sol(0.4; idxs = x(t))^2
 end
 
-@testset "Parameter elstimation" begin
+@testset "Parameter estimation" begin
     @parameters α = 1.5 β = 1.0 [tunable = false] γ = 3.0 δ = 1.0
     @variables x(t) y(t)
 
