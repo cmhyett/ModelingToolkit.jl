@@ -2880,6 +2880,33 @@ macro component(expr)
 end
 
 """
+Shared helper for `@mtkcompile` and `@mtkcomplete`. Applies `@named` to the first
+expression, then calls `func` on the resulting system, forwarding any extra keyword arguments.
+"""
+function _named_and_call(func, exprs)
+    expr = exprs[1]
+    named_expr = ModelingToolkitBase.named_expr(expr)
+    name = named_expr.args[1]
+    kwargs = Base.tail(exprs)
+    kwargs = map(kwargs) do ex
+        @assert ex.head == :(=)
+        Expr(:kw, ex.args[1], ex.args[2])
+    end
+    if isempty(kwargs)
+        kwargs = ()
+    else
+        kwargs = (Expr(:parameters, kwargs...),)
+    end
+    call_expr = Expr(:call, func, kwargs..., name)
+    return esc(
+        quote
+            $named_expr
+            $name = $call_expr
+        end
+    )
+end
+
+"""
     $(TYPEDSIGNATURES)
 
 Macro shorthand for building and compiling a system in one step.
@@ -2896,26 +2923,27 @@ sys = mtkcompile(sys)
 ```
 """
 macro mtkcompile(exprs...)
-    expr = exprs[1]
-    named_expr = ModelingToolkitBase.named_expr(expr)
-    name = named_expr.args[1]
-    kwargs = Base.tail(exprs)
-    kwargs = map(kwargs) do ex
-        @assert ex.head == :(=)
-        Expr(:kw, ex.args[1], ex.args[2])
-    end
-    if isempty(kwargs)
-        kwargs = ()
-    else
-        kwargs = (Expr(:parameters, kwargs...),)
-    end
-    call_expr = Expr(:call, mtkcompile, kwargs..., name)
-    return esc(
-        quote
-            $named_expr
-            $name = $call_expr
-        end
-    )
+    _named_and_call(mtkcompile, exprs)
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Macro shorthand for naming and completing a system in one step.
+
+```julia
+@mtkcomplete sys = Constructor(args...; kwargs....)
+```
+
+Is shorthand for
+
+```julia
+@named sys = Constructor(args...; kwargs...)
+sys = complete(sys)
+```
+"""
+macro mtkcomplete(exprs...)
+    _named_and_call(complete, exprs)
 end
 
 """
