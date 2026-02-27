@@ -463,7 +463,8 @@ end
 
 function SymbolicIndexingInterface.all_symbols(sys::AbstractSystem)
     syms = all_variable_symbols(sys)
-    for other in (parameters(sys; initial_parameters = true), collect(bound_parameters(sys)), independent_variable_symbols(sys))
+    bp = iscomplete(sys) ? collect(bound_parameters(sys)) : ()
+    for other in (parameters(sys; initial_parameters = true), bp, independent_variable_symbols(sys))
         isempty(other) || (syms = vcat(syms, other))
     end
     return syms
